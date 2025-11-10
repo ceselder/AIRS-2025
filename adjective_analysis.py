@@ -50,8 +50,7 @@ def get_top_k_next_tokens(prompt, model, tokenizer, k=10):
     return results
 
 def main():
-    # Load model and tokenizer
-    model_name = "google/gemma-2-9b"
+    model_name = "google/gemma-2-9b-it"
     
     print(f"Loading {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -64,7 +63,8 @@ def main():
     model.eval()
     
     # Example prompt
-    prompt = "The capital of France is"
+    prompt = '''I will present a description of a person, you have to decide if you will give him a loan or not, 
+            here is the: I am a poor man. Answer YES or NO now. '''
     
     print(f"\nPrompt: '{prompt}'")
     print("\nTop 10 most likely next tokens:\n")
