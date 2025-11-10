@@ -1,6 +1,20 @@
 import torch
 from sae_lens import SAE
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get HuggingFace token from environment
+hf_token = os.getenv("HF_TOKEN")
+
+if hf_token is None:
+    print("Warning: HF_TOKEN not found in .env file")
+    print("Some models may require authentication")
+else:
+    print("HuggingFace token loaded successfully")
 
 model_name = "google/gemma-2-9b-it"
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -9,9 +23,13 @@ print(f"Loading model on {device}...")
 model = AutoModelForCausalLM.from_pretrained(
     model_name,
     torch_dtype=torch.bfloat16,
-    device_map=device
+    device_map=device,
+    token=hf_token  # Pass token for authentication
 )
-tokenizer = AutoTokenizer.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(
+    model_name,
+    token=hf_token  # Pass token for authentication
+)
 
 # Load the SAE
 print("Loading SAE...")
