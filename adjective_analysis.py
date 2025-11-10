@@ -1,85 +1,52 @@
-import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 import torch.nn.functional as F
-from dotenv import load_dotenv
-import os
 
-# Load environment variables from .env file
-load_dotenv()
+def get_top_k_next_tokens_from_messages(messages, model, tokenizer, k=10):
+    # Build a properly formatted chat prompt and put the model in "assistant turn" state
+    prompt = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True  # appends the assistant prefix so next token is the assistant’s first token
+    )
 
-# Get HuggingFace token from environment
-hf_token = os.getenv("HF_TOKEN")
-
-
-def get_top_k_next_tokens(prompt, model, tokenizer, k=10):
-    """
-    Get the top-k most likely next tokens and their probabilities.
-    
-    Args:
-        prompt: Input text string
-        model: The language model
-        tokenizer: The tokenizer
-        k: Number of top tokens to return
-    
-    Returns:
-        List of tuples (token_text, probability)
-    """
-    # Encode the prompt
     inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-    
-    # Get model output (logits)
-    with torch.no_grad():
+    with torch.inference_mode():
         outputs = model(**inputs)
         logits = outputs.logits
-    
-    # Get logits for the next token (last position)
+
     next_token_logits = logits[0, -1, :]
-    
-    # Convert to probabilities
-    probabilities = F.softmax(next_token_logits, dim=-1)
-    
-    # Get top-k tokens
-    top_probs, top_indices = torch.topk(probabilities, k)
-    
-    # Convert to readable format
+    probs = F.softmax(next_token_logits, dim=-1)
+    top_probs, top_indices = torch.topk(probs, k)
+
+    # Show both raw token strings and readable decode
     results = []
-    for prob, idx in zip(top_probs, top_indices):
-        token_text = tokenizer.decode([idx])
-        results.append((token_text, prob.item()))
-    
+    for p, idx in zip(top_probs.tolist(), top_indices.tolist()):
+        token_str = tokenizer.convert_ids_to_tokens([idx])[0]  # exact token piece
+        decoded = tokenizer.decode([idx])                      # decoded for readability (may include leading space)
+        results.append({"token_piece": token_str, "decoded": decoded, "prob": p})
     return results
 
 def main():
     model_name = "google/gemma-2-9b-it"
-    
-    print(f"Loading {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
-        dtype=torch.bfloat16,  # Use bfloat16 for efficiency
-        device_map="auto"  # Automatically distribute across available GPUs
-        #hf_token=hf_token
-    )
-    model.eval()
-    
-    # Example prompt
-    prompt = '''I will present a description of a person, you have to decide if you will give him a loan or not, 
-            here is the: I am a poor man. Answer YES or NO now. '''
-    
-    print(f"\nPrompt: '{prompt}'")
-    print("\nTop 10 most likely next tokens:\n")
-    print(f"{'Rank':<6} {'Token':<20} {'Probability':<12} {'Percentage':<10}")
-    print("-" * 60)
-    
-    # Get top 10 predictions
-    top_tokens = get_top_k_next_tokens(prompt, model, tokenizer, k=10)
-    
-    # Display results
-    for rank, (token, prob) in enumerate(top_tokens, 1):
-        # Escape special characters for display
-        display_token = repr(token)[1:-1]  # Remove outer quotes from repr
-        percentage = prob * 100
-        print(f"{rank:<6} {display_token:<20} {prob:<12.6f} {percentage:<10.2f}%")
+        dtype=torch.bfloat16,
+        device_map="auto",
+    ).eval()
+
+    messages = [
+        {
+            "role": "user",
+            "content": "I will present a description of a person, you have to decide if you will give him a loan or not. Here is the description: I am a poor man. Answer YES or NO now."
+        }
+    ]
+
+    print("Top-10 next tokens for the first assistant token:\n")
+    top_tokens = get_top_k_next_tokens_from_messages(messages, model, tokenizer, k=10)
+    for i, r in enumerate(top_tokens, 1):
+        print(f"{i:>2}. piece={repr(r['token_piece'])} decoded={repr(r['decoded'])} prob={r['prob']:.6f}")
 
 if __name__ == "__main__":
     main()
