@@ -1,6 +1,15 @@
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch.nn.functional as F
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
+
+# Get HuggingFace token from environment
+hf_token = os.getenv("HF_TOKEN")
+
 
 def get_top_k_next_tokens(prompt, model, tokenizer, k=10):
     """
@@ -50,6 +59,7 @@ def main():
         model_name,
         torch_dtype=torch.bfloat16,  # Use bfloat16 for efficiency
         device_map="auto"  # Automatically distribute across available GPUs
+        hf_token=hf_token
     )
     model.eval()
     
