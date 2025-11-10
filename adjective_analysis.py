@@ -58,7 +58,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,  # Use bfloat16 for efficiency
-        device_map="auto"  # Automatically distribute across available GPUs
+        device_map="auto",  # Automatically distribute across available GPUs
         hf_token=hf_token
     )
     model.eval()
