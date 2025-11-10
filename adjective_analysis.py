@@ -51,8 +51,11 @@ def main():
 
         top_tokens = get_top_k_next_tokens_from_messages(messages, model, tokenizer, k=10)
         for i, r in enumerate(top_tokens, 1):
+            print(r)
             if r == "NO":
                 print(f"{adjective} NO prob: {r['prob']:.6f}")
+            if r == "YES":
+                print(f"{adjective} YES prob: {r['prob']:.6f}")
 
 if __name__ == "__main__":
     main()
