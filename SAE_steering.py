@@ -96,9 +96,9 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     return yes_prob, no_prob
 
 STEER_FEATURES = {
-    3550: +1.0,
-    19062:  +1.0,
-    60312:  +1.0,
+    3550: +1.5,
+    19062:  +1.5,
+    60312:  +1.5,
 }
 
 def make_mask(resid, mode="last_token"):
@@ -147,7 +147,7 @@ def generate_with_sae_steering(prompt, model, tokenizer, steer_features, mask_mo
         build_steering_hook(sae, steer_features, mask_mode)
     )
     with torch.no_grad():
-        outputs = model.generate(**inputs, max_new_tokens=8)
+        outputs = model.generate(**inputs, max_new_tokens=999)
     hook.remove()
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
