@@ -93,7 +93,7 @@ nationalities = [
    "Jordanian",
    "Kazakhstani",
    "Kenyan",
-   "Kittian and Nevisian",
+   #"Kittian and Nevisian",
    "Kuwaiti",
    "Kyrgyz",
    "Laotian",
@@ -178,7 +178,7 @@ nationalities = [
    "Thai",
    "Togolese",
    "Tongan",
-   "Trinidadian or Tobagonian",
+   #"Trinidadian or Tobagonian",
    "Tunisian",
    "Turkish",
    "Tuvaluan",
@@ -382,3 +382,75 @@ print(f"Mean YES probability: {mean_prob:.4f}")
 print(f"Highest: {top_15[0][0]} - {top_15[0][1]:.4f}")
 print(f"Lowest: {bottom_15[-1][0]} - {bottom_15[-1][1]:.4f}")
 print(f"Range: {top_15[0][1] - bottom_15[-1][1]:.4f}")
+
+# Sort all nationalities by YES probability (highest to lowest)
+all_sorted = sorted(cleaned_bias_list, key=lambda x: x[1], reverse=True)
+all_nationalities = [item[0] for item in all_sorted]
+all_yes_probs = [item[1] for item in all_sorted]
+
+# Calculate figure height based on number of countries (give each bar enough space)
+num_countries = len(all_nationalities)
+fig_height = max(16, num_countries * 0.25)  # At least 16 inches, or 0.25 inches per country
+
+# Create the comprehensive plot
+fig, ax = plt.subplots(figsize=(14, fig_height))
+
+# Create color gradient from green (high) to red (low)
+colors_all = plt.cm.RdYlGn(np.linspace(0.2, 0.8, num_countries))[::-1]
+
+# Create horizontal bar chart
+y_pos_all = np.arange(len(all_nationalities))
+bars_all = ax.barh(y_pos_all, all_yes_probs, color=colors_all, alpha=0.8, edgecolor='black', linewidth=0.3)
+
+# Customize the plot
+ax.set_yticks(y_pos_all)
+ax.set_yticklabels(all_nationalities, fontsize=9)
+ax.invert_yaxis()  # Highest at top
+ax.set_xlabel('YES Probability', fontsize=14, fontweight='bold')
+ax.set_title('Complete Loan Approval Bias Analysis: All Nationalities\n(Sorted by YES Probability)', 
+             fontsize=16, fontweight='bold', pad=20)
+
+# Add a vertical line at mean probability
+ax.axvline(mean_prob, color='black', linestyle='--', linewidth=2, alpha=0.7, 
+           label=f'Mean: {mean_prob:.4f}', zorder=10)
+
+# Add value labels on bars (only show every few bars to avoid clutter)
+label_interval = max(1, num_countries // 40)  # Show ~40 labels max
+for i, (bar, prob) in enumerate(zip(bars_all, all_yes_probs)):
+    if i % label_interval == 0 or i == 0 or i == num_countries - 1:
+        ax.text(prob + 0.002, bar.get_y() + bar.get_height()/2, 
+                f'{prob:.4f}', 
+                va='center', fontsize=7, fontweight='bold')
+
+# Add grid for readability
+ax.grid(axis='x', alpha=0.3, linestyle=':', linewidth=0.5)
+ax.set_axisbelow(True)
+
+# Add legend with statistics
+legend_text = [
+    f'Mean: {mean_prob:.4f}',
+    f'Highest: {all_sorted[0][0]} ({all_sorted[0][1]:.4f})',
+    f'Lowest: {all_sorted[-1][0]} ({all_sorted[-1][1]:.4f})',
+    f'Range: {all_sorted[0][1] - all_sorted[-1][1]:.4f}',
+    f'Std Dev: {np.std(all_yes_probs):.4f}'
+]
+ax.text(0.98, 0.02, '\n'.join(legend_text), 
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment='bottom',
+        horizontalalignment='right',
+        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='black'))
+
+plt.tight_layout()
+plt.savefig('nationality_bias_complete.png', dpi=300, bbox_inches='tight')
+plt.show()
+
+print(f"\n{'='*60}")
+print("COMPLETE ANALYSIS SAVED")
+print(f"{'='*60}")
+print(f"Top 5 nationalities:")
+for i, (nat, prob) in enumerate(all_sorted[:5], 1):
+    print(f"  {i}. {nat}: {prob:.4f}")
+print(f"\nBottom 5 nationalities:")
+for i, (nat, prob) in enumerate(all_sorted[-5:], 1):
+    print(f"  {i}. {nat}: {prob:.4f}")
