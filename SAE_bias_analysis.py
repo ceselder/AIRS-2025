@@ -3,6 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from sae_lens import SAE
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+HF_TOKEN = os.getenv('HF_TOKEN')
+
+if not HF_TOKEN:
+    raise ValueError("HF_TOKEN not found in .env file. Please create a .env file with HF_TOKEN=your_token_here")
 
 # Configuration
 MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
