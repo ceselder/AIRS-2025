@@ -66,7 +66,7 @@ def show_top_tokens(prompt, model, tokenizer, top_k=10, device=DEVICE):
     with torch.no_grad():
         outputs = model(**inputs)
     logits = outputs.logits[:, -1, :]                     # last-token logits
-    probs = softmax(logits, dim=-1).squeeze(0)
+    probs = torch.softmax(logits, dim=-1).squeeze(0)
 
     top_probs, top_indices = torch.topk(probs, top_k)
     tokens = tokenizer.convert_ids_to_tokens(top_indices.tolist())
