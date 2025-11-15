@@ -107,13 +107,13 @@ chat_prompts = [build_chat_prompt("I am financially responsible"),
 for p in chat_prompts:
     show_top_tokens(p, model, tokenizer, top_k=5)
 
-activations_trans = get_sae_activations(chat_prompts[0], model, tokenizer, sae, LAYER)
-activations_cis = get_sae_activations(chat_prompts[1], model, tokenizer, sae, LAYER)
+activations_counterfactual = get_sae_activations(chat_prompts[0], model, tokenizer, sae, LAYER)
+activations_base = get_sae_activations(chat_prompts[1], model, tokenizer, sae, LAYER)
 
 print("\nComputing differences...")
-avg_trans = activations_trans.mean(dim=1).squeeze().detach().cpu().numpy()
-avg_cis = activations_cis.mean(dim=1).squeeze().detach().cpu().numpy()
-difference = avg_trans - avg_cis
+avg_counterfactual = activations_counterfactual.mean(dim=1).squeeze().detach().cpu().numpy()
+avg_base = activations_base.mean(dim=1).squeeze().detach().cpu().numpy()
+difference = avg_counterfactual - avg_base
 
 top_k = 50
 top_indices = np.argsort(np.abs(difference))[-top_k:][::-1]
@@ -125,7 +125,7 @@ for i, (idx, diff) in enumerate(zip(top_indices, top_differences), start=1):
 
 fig, axes = plt.subplots(2, 2, figsize=(15, 12))
 axes[0, 0].hist(difference, bins=100, alpha=0.7, edgecolor="black")
-axes[0, 0].set_xlabel("Activation Difference (trans - cis)")
+axes[0, 0].set_xlabel("Activation Difference (counterfactual - base)")
 axes[0, 0].set_ylabel("Frequency")
 axes[0, 0].set_title("Distribution of SAE Feature Differences")
 axes[0, 0].axvline(x=0, color="red", linestyle="--", linewidth=2)
@@ -139,18 +139,18 @@ axes[0, 1].set_title(f"Top {top_k} Most Different Features")
 axes[0, 1].axvline(x=0, color="black", linestyle="-", linewidth=1)
 axes[0, 1].invert_yaxis()
 
-sample_indices = np.random.choice(len(avg_trans), size=min(1000, len(avg_trans)), replace=False)
-axes[1, 0].scatter(avg_cis[sample_indices], avg_trans[sample_indices], alpha=0.5, s=10)
+sample_indices = np.random.choice(len(avg_counterfactual), size=min(1000, len(avg_counterfactual)), replace=False)
+axes[1, 0].scatter(avg_base[sample_indices], avg_counterfactual[sample_indices], alpha=0.5, s=10)
 axes[1, 0].plot(
-    [avg_cis.min(), avg_cis.max()],
-    [avg_cis.min(), avg_cis.max()],
+    [avg_base.min(), avg_base.max()],
+    [avg_base.min(), avg_base.max()],
     "r--",
     linewidth=2,
     label="y=x",
 )
-axes[1, 0].set_xlabel("CIS Activation")
-axes[1, 0].set_ylabel("TRANS Activation")
-axes[1, 0].set_title("SAE Feature Activations: Trans vs Cis")
+axes[1, 0].set_xlabel("base Activation")
+axes[1, 0].set_ylabel("counterfactual Activation")
+axes[1, 0].set_title("SAE Feature Activations: counterfactual vs base")
 axes[1, 0].legend()
 axes[1, 0].grid(True, alpha=0.3)
 
@@ -162,8 +162,8 @@ axes[1, 1].set_title("Cumulative Impact of Top Features")
 axes[1, 1].grid(True, alpha=0.3)
 
 plt.tight_layout()
-plt.savefig("sae_analysis_trans_vs_cis.png", dpi=300, bbox_inches="tight")
-print("\nVisualization saved as 'sae_analysis_trans_vs_cis.png'")
+plt.savefig("sae_analysis_counterfactual_vs_base.png", dpi=300, bbox_inches="tight")
+print("\nVisualization saved as 'sae_analysis_counterfactual_vs_base.png'")
 plt.show()
 
 print("\n" + "=" * 60)
@@ -180,8 +180,8 @@ print(f"Features with |diff| > 0.1: {np.sum(np.abs(difference) > 0.1)}")
 print("\n" + "=" * 60)
 print("SPARSITY ANALYSIS")
 print("=" * 60)
-print(f"Active features in 'trans' prompt: {np.sum(avg_trans > 0.01)}")
-print(f"Active features in 'cis' prompt: {np.sum(avg_cis > 0.01)}")
-print(f"Features active in both: {np.sum((avg_trans > 0.01) & (avg_cis > 0.01))}")
-print(f"Features only active in 'trans': {np.sum((avg_trans > 0.01) & (avg_cis <= 0.01))}")
-print(f"Features only active in 'cis': {np.sum((avg_trans <= 0.01) & (avg_cis > 0.01))}")
+print(f"Active features in 'counterfactual' prompt: {np.sum(avg_counterfactual > 0.01)}")
+print(f"Active features in 'base' prompt: {np.sum(avg_base > 0.01)}")
+print(f"Features active in both: {np.sum((avg_counterfactual > 0.01) & (avg_base > 0.01))}")
+print(f"Features only active in 'counterfactual': {np.sum((avg_counterfactual > 0.01) & (avg_base <= 0.01))}")
+print(f"Features only active in 'base': {np.sum((avg_counterfactual <= 0.01) & (avg_base > 0.01))}")
