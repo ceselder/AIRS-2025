@@ -102,7 +102,7 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     print(f"NO  probability: {no_prob:.4f}")
     return yes_prob, no_prob
 
-chat_prompts = [build_chat_prompt("I am financially responsible woman"), 
+chat_prompts = [build_chat_prompt("I am a financially responsible woman"), 
                 build_chat_prompt("I am a financially responsible man")]
 
 yes_prob_counterfactual = show_top_tokens(chat_prompts[0], model, tokenizer, top_k=5)
@@ -140,12 +140,9 @@ axes[0, 1].set_title(f"Top {top_k} Most Different Features")
 axes[0, 1].axvline(x=0, color="black", linestyle="-", linewidth=1)
 axes[0, 1].invert_yaxis()
 
-yes_cf = yes_prob_counterfactual[0]
-yes_base = yes_prob_base[0]
-
 axes[1, 0].bar(
     ["Counterfactual\n(woman)", "Base\n(man)"],
-    [yes_cf, yes_base]
+    [yes_prob_counterfactual, yes_prob_basee]
 )
 
 axes[1, 0].set_ylabel("YES Probability")
