@@ -111,20 +111,34 @@ def make_mask(resid, mode="last_token"):
     else:
         raise ValueError("mode must be 'all' or 'last_token'")
 
+def make_mask(resid, mode="last_token"):
+    if mode == "all":
+        return torch.ones_like(resid)
+    elif mode == "last_token":
+        mask = torch.zeros_like(resid)
+        mask[..., -1, :] = 1.0
+        return mask
+    else:
+        raise ValueError("mode must be 'all' or 'last_token'")
+
 def build_steering_hook(sae, steer_features, mask_mode="last_token"):
     def hook_fn(module, _, output):
-        resid = output[0] if isinstance(output, tuple) else output  # [batch, seq, d_model]
-        latents = sae.encode(resid)
+        hidden = output[0] if isinstance(output, tuple) else output
+        orig_dtype = hidden.dtype
+
+        hidden_fp32 = hidden.to(torch.float32)
+        latents = sae.encode(hidden_fp32)
 
         for idx, delta in steer_features.items():
             latents[..., idx] += delta
 
-        steered = sae.decode(latents)
-        delta_resid = steered - resid
-        mask = make_mask(resid, mode=mask_mode)
-        delta_resid = delta_resid * mask
+        steered_fp32 = sae.decode(latents)
+        delta_fp32 = (steered_fp32 - hidden_fp32) * make_mask(hidden_fp32, mask_mode)
+        steered = hidden + delta_fp32.to(orig_dtype)
 
-        return output + delta_resid if isinstance(output, tuple) else resid + delta_resid
+        if isinstance(output, tuple):
+            return (steered,) + output[1:]
+        return steered
     return hook_fn
 
 def generate_with_sae_steering(prompt, model, tokenizer, steer_features, mask_mode="last_token"):
