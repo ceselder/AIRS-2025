@@ -60,12 +60,12 @@ def get_sae_activations(prompt, model, tokenizer, sae, layer):
     
     return sae_output
 
-print("\nProcessing 'patient' prompt...")
-prompt_trans = create_prompt("patient")
+print("\nProcessing 'kind' prompt...")
+prompt_trans = create_prompt("kind")
 activations_trans = get_sae_activations(prompt_trans, model, tokenizer, sae, LAYER)
 
-print("Processing 'inpatient' prompt...")
-prompt_cis = create_prompt("inpatient")
+print("Processing 'mean' prompt...")
+prompt_cis = create_prompt("mean")
 activations_cis = get_sae_activations(prompt_cis, model, tokenizer, sae, LAYER)
 
 print("\nComputing differences...")
