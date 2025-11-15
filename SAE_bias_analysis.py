@@ -33,7 +33,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 # Load SAE
 print(f"Loading SAE for layer {LAYER}...")
-sae, cfg_dict, sparsity = SAE.from_pretrained(
+sae, cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
     release=SAE_RELEASE,
     sae_id=SAE_ID,
     device=DEVICE
