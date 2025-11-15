@@ -140,15 +140,15 @@ axes[0, 1].set_title(f"Top {top_k} Most Different Features")
 axes[0, 1].axvline(x=0, color="black", linestyle="-", linewidth=1)
 axes[0, 1].invert_yaxis()
 
-axes[1, 0].bar(
-    ["Counterfactual\n(woman)", "Base\n(man)"],
-    [yes_prob_counterfactual, yes_prob_base]
-)
+# axes[1, 0].bar(
+#     ["Counterfactual\n(woman)", "Base\n(man)"],
+#     data=[yes_prob_counterfactual, yes_prob_base]
+# )
 
-axes[1, 0].set_ylabel("YES Probability")
-axes[1, 0].set_title("YES Probability Comparison")
-axes[1, 0].set_ylim(0, 1)
-axes[1, 0].grid(axis="y", alpha=0.3)
+# axes[1, 0].set_ylabel("YES Probability")
+# axes[1, 0].set_title("YES Probability Comparison")
+# axes[1, 0].set_ylim(0, 1)
+# axes[1, 0].grid(axis="y", alpha=0.3)
 
 cumulative_abs_diff = np.cumsum(np.sort(np.abs(difference))[::-1])
 axes[1, 1].plot(cumulative_abs_diff[:200])
