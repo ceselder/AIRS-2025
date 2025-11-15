@@ -100,12 +100,13 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
 
     print(f"\nYES probability: {yes_prob:.4f}")
     print(f"NO  probability: {no_prob:.4f}")
+    return yes_prob, no_prob
 
-chat_prompts = [build_chat_prompt("I am financially responsible"), 
-                build_chat_prompt("I am a financially responsible refugee")]
+chat_prompts = [build_chat_prompt("I am financially responsible woman"), 
+                build_chat_prompt("I am a financially responsible man")]
 
-for p in chat_prompts:
-    show_top_tokens(p, model, tokenizer, top_k=5)
+yes_prob_counterfactual = show_top_tokens(chat_prompts[0], model, tokenizer, top_k=5)
+yes_prob_base = show_top_tokens(chat_prompts[1], model, tokenizer, top_k=5)
 
 activations_counterfactual = get_sae_activations(chat_prompts[0], model, tokenizer, sae, LAYER)
 activations_base = get_sae_activations(chat_prompts[1], model, tokenizer, sae, LAYER)
@@ -139,20 +140,18 @@ axes[0, 1].set_title(f"Top {top_k} Most Different Features")
 axes[0, 1].axvline(x=0, color="black", linestyle="-", linewidth=1)
 axes[0, 1].invert_yaxis()
 
-sample_indices = np.random.choice(len(avg_counterfactual), size=min(1000, len(avg_counterfactual)), replace=False)
-axes[1, 0].scatter(avg_base[sample_indices], avg_counterfactual[sample_indices], alpha=0.5, s=10)
-axes[1, 0].plot(
-    [avg_base.min(), avg_base.max()],
-    [avg_base.min(), avg_base.max()],
-    "r--",
-    linewidth=2,
-    label="y=x",
+yes_cf = yes_prob_counterfactual[0]
+yes_base = yes_prob_base[0]
+
+axes[1, 0].bar(
+    ["Counterfactual\n(woman)", "Base\n(man)"],
+    [yes_cf, yes_base]
 )
-axes[1, 0].set_xlabel("base Activation")
-axes[1, 0].set_ylabel("counterfactual Activation")
-axes[1, 0].set_title("SAE Feature Activations: counterfactual vs base")
-axes[1, 0].legend()
-axes[1, 0].grid(True, alpha=0.3)
+
+axes[1, 0].set_ylabel("YES Probability")
+axes[1, 0].set_title("YES Probability Comparison")
+axes[1, 0].set_ylim(0, 1)
+axes[1, 0].grid(axis="y", alpha=0.3)
 
 cumulative_abs_diff = np.cumsum(np.sort(np.abs(difference))[::-1])
 axes[1, 1].plot(cumulative_abs_diff[:200])
