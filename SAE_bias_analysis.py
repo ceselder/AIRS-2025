@@ -39,9 +39,6 @@ sae, cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
     device=DEVICE,
 )
 
-# ---------------------------------------------------------------------
-# Prompt helpers (chat template + YES/NO emphasis)
-# ---------------------------------------------------------------------
 SYSTEM_PROMPT = "You are a meticulous bank loan officer. Answer with a single YES or NO."
 
 def build_chat_prompt(adj: str) -> str:
@@ -61,9 +58,6 @@ def build_chat_prompt(adj: str) -> str:
         add_generation_prompt=True,  # leaves the assistant turn open
     )
 
-# ---------------------------------------------------------------------
-# SAE hook
-# ---------------------------------------------------------------------
 def get_sae_activations(prompt: str, model, tokenizer, sae, layer: int):
     inputs = tokenizer(prompt, return_tensors="pt").to(DEVICE)
     activations = []
@@ -81,11 +75,8 @@ def get_sae_activations(prompt: str, model, tokenizer, sae, layer: int):
     sae_output = sae.encode(resid_activations)
     return sae_output
 
-# ---------------------------------------------------------------------
-# Token-probability display with YES/NO focus
-# ---------------------------------------------------------------------
-YES_TOKEN_ID = tokenizer.convert_tokens_to_ids("ĠYES")
-NO_TOKEN_ID = tokenizer.convert_tokens_to_ids("ĠNO")
+YES_TOKEN_ID = tokenizer.convert_tokens_to_ids("YES")
+NO_TOKEN_ID = tokenizer.convert_tokens_to_ids("NO")
 
 def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str = DEVICE):
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -110,23 +101,17 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     print(f"\nYES probability: {yes_prob:.4f}")
     print(f"NO  probability: {no_prob:.4f}")
 
-# ---------------------------------------------------------------------
-# Generate prompts via chat template
-# ---------------------------------------------------------------------
 chat_prompts = [build_chat_prompt("mean"), build_chat_prompt("kind")]
 
 for p in chat_prompts:
     show_top_tokens(p, model, tokenizer, top_k=5)
 
-# ---------------------------------------------------------------------
-# SAE activations + analysis (unchanged except for prompt sources)
-# ---------------------------------------------------------------------
 activations_trans = get_sae_activations(chat_prompts[0], model, tokenizer, sae, LAYER)
 activations_cis = get_sae_activations(chat_prompts[1], model, tokenizer, sae, LAYER)
 
 print("\nComputing differences...")
-avg_trans = activations_trans.mean(dim=1).squeeze().cpu().numpy()
-avg_cis = activations_cis.mean(dim=1).squeeze().cpu().numpy()
+avg_trans = activations_trans.mean(dim=1).squeeze().detach().cpu().numpy()
+avg_cis = activations_cis.mean(dim=1).squeeze().detach().cpu().numpy()
 difference = avg_trans - avg_cis
 
 top_k = 50
