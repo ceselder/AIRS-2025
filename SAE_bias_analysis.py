@@ -158,17 +158,17 @@ print("="*80)
 # Get activations and probs for both prompts
 print("\nProcessing 'trans' prompt...")
 prompt_trans = create_prompt("trans")
-activations_trans, yes_prob_trans, no_prob_trans, resid_trans = get_sae_activations_and_probs(
+activations_trans, yes_prob_trans, no_prob_trans, resid_trans, top_preds_trans = get_sae_activations_and_probs(
     prompt_trans, model, tokenizer, sae, LAYER, yes_token_id, no_token_id
 )
-print(f"  YES: {yes_prob_trans:.4f}, NO: {no_prob_trans:.4f}")
+print_top_predictions(top_preds_trans, yes_prob_trans, no_prob_trans)
 
 print("\nProcessing 'cis' prompt...")
 prompt_cis = create_prompt("cis")
-activations_cis, yes_prob_cis, no_prob_cis, resid_cis = get_sae_activations_and_probs(
+activations_cis, yes_prob_cis, no_prob_cis, resid_cis, top_preds_cis = get_sae_activations_and_probs(
     prompt_cis, model, tokenizer, sae, LAYER, yes_token_id, no_token_id
 )
-print(f"  YES: {yes_prob_cis:.4f}, NO: {no_prob_cis:.4f}")
+print_top_predictions(top_preds_cis, yes_prob_cis, no_prob_cis)
 
 # Analyze by position instead of just averaging
 print("\n" + "="*80)
@@ -247,31 +247,43 @@ steering_strengths = [-2.0, -1.0, -0.5, -0.2, 0, 0.2, 0.5, 1.0, 2.0, 5.0]
 print("\n--- Steering on 'trans' prompt ---")
 trans_steering_results = []
 for strength in steering_strengths:
-    yes_prob, no_prob = get_steered_probs(
-        prompt_trans, model, tokenizer, sae, LAYER, most_diff_feature, strength, yes_token_id, no_token_id
+    yes_prob, no_prob, top_preds = get_steered_probs(
+        prompt_trans, model, tokenizer, sae, LAYER, most_diff_feature, strength, yes_token_id, no_token_id, 
+        verbose=(strength == 0)  # Show top predictions for baseline
     )
     trans_steering_results.append((strength, yes_prob, no_prob))
-    print(f"Strength {strength:+5.1f}: YES={yes_prob:.4f}, NO={no_prob:.4f}")
+    if strength == 0:
+        print(f"Strength {strength:+5.1f} (baseline):")
+    else:
+        print(f"Strength {strength:+5.1f}: YES={yes_prob:.4f}, NO={no_prob:.4f}")
 
 print("\n--- Steering on 'cis' prompt ---")
 cis_steering_results = []
 for strength in steering_strengths:
-    yes_prob, no_prob = get_steered_probs(
-        prompt_cis, model, tokenizer, sae, LAYER, most_diff_feature, strength, yes_token_id, no_token_id
+    yes_prob, no_prob, top_preds = get_steered_probs(
+        prompt_cis, model, tokenizer, sae, LAYER, most_diff_feature, strength, yes_token_id, no_token_id,
+        verbose=(strength == 0)
     )
     cis_steering_results.append((strength, yes_prob, no_prob))
-    print(f"Strength {strength:+5.1f}: YES={yes_prob:.4f}, NO={no_prob:.4f}")
+    if strength == 0:
+        print(f"Strength {strength:+5.1f} (baseline):")
+    else:
+        print(f"Strength {strength:+5.1f}: YES={yes_prob:.4f}, NO={no_prob:.4f}")
 
 # Test on neutral prompt
 print("\n--- Testing on neutral prompt ('tall') ---")
 neutral_prompt = create_prompt("tall")
 neutral_steering_results = []
 for strength in steering_strengths:
-    yes_prob, no_prob = get_steered_probs(
-        neutral_prompt, model, tokenizer, sae, LAYER, most_diff_feature, strength, yes_token_id, no_token_id
+    yes_prob, no_prob, top_preds = get_steered_probs(
+        neutral_prompt, model, tokenizer, sae, LAYER, most_diff_feature, strength, yes_token_id, no_token_id,
+        verbose=(strength == 0)
     )
     neutral_steering_results.append((strength, yes_prob, no_prob))
-    print(f"Strength {strength:+5.1f}: YES={yes_prob:.4f}, NO={no_prob:.4f}")
+    if strength == 0:
+        print(f"Strength {strength:+5.1f} (baseline):")
+    else:
+        print(f"Strength {strength:+5.1f}: YES={yes_prob:.4f}, NO={no_prob:.4f}")
 
 # Visualization
 fig, axes = plt.subplots(2, 3, figsize=(20, 12))
