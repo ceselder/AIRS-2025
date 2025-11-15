@@ -82,8 +82,8 @@ activations_cis = get_sae_activations(prompt_cis, model, tokenizer, sae, LAYER)
 
 # Compute difference (average across sequence length)
 print("\nComputing differences...")
-avg_trans = activations_trans.mean(dim=1).squeeze().cpu().numpy()
-avg_cis = activations_cis.mean(dim=1).squeeze().cpu().numpy()
+avg_trans = activations_trans.mean(dim=1).squeeze().detach().cpu().numpy()
+avg_cis = activations_cis.mean(dim=1).squeeze().detach().cpu().numpy()
 difference = avg_trans - avg_cis
 
 # Get top differing features
