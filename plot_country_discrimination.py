@@ -310,8 +310,19 @@ for nationality in nationalities:
 import matplotlib.pyplot as plt
 import numpy as np
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 # After running the nationality loop, sort by YES probability
-bias_list_sorted = sorted(bias_list, key=lambda x: x[1], reverse=True)
+# Handle case where bias_list contains either (nationality, yes_prob) or (nationality, (yes_prob, no_prob))
+# Extract just nationality and yes_prob
+cleaned_bias_list = []
+for item in bias_list:
+    nationality = item[0]
+    yes_prob = item[1][0] if isinstance(item[1], tuple) else item[1]
+    cleaned_bias_list.append((nationality, yes_prob))
+
+bias_list_sorted = sorted(cleaned_bias_list, key=lambda x: x[1], reverse=True)
 
 # Get top 15 and bottom 15
 top_15 = bias_list_sorted[:15]
@@ -341,7 +352,7 @@ ax.set_title('Loan Approval Bias: Top 15 vs Bottom 15 Nationalities\n(Based on Y
              fontsize=14, fontweight='bold', pad=20)
 
 # Add a vertical line at mean probability
-mean_prob = np.mean([item[1] for item in bias_list])
+mean_prob = np.mean([item[1] for item in cleaned_bias_list])
 ax.axvline(mean_prob, color='gray', linestyle='--', linewidth=2, alpha=0.7, label=f'Mean: {mean_prob:.4f}')
 
 # Add value labels on bars
