@@ -14,7 +14,7 @@ if not HF_TOKEN:
     raise ValueError("HF_TOKEN not found in .env file. Please create a .env file with HF_TOKEN=your_token_here")
 
 # Configuration
-MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
+MODEL_NAME = "meta-llama/Llama-3.1-8B-Instruct"
 SAE_RELEASE = "llama-3-8b-it-res-jh" 
 SAE_ID = "blocks.25.hook_resid_post"
 LAYER = 25
