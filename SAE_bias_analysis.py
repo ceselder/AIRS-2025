@@ -15,7 +15,7 @@ if not HF_TOKEN:
     raise ValueError("HF_TOKEN not found in .env file")
 
 # Configuration
-MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
 SAE_RELEASE = "llama-3-8b-it-res-jh" 
 SAE_ID = "blocks.25.hook_resid_post"
 LAYER = 25
@@ -77,7 +77,7 @@ def analyze_prompt(prompt, label):
     
     # Get SAE activations
     sae_acts = sae.encode(resid)
-    last_pos_acts = sae_acts[0, -1, :].cpu().numpy()
+    last_pos_acts = sae_acts[0, -1, :].detach().cpu().numpy()
     
     # Get predictions
     probs = F.softmax(logits[0, -1, :], dim=-1)
