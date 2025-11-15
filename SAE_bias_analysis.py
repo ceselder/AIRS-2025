@@ -15,7 +15,8 @@ if not HF_TOKEN:
 
 # Configuration
 MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
-SAE_RELEASE = "llama-3.1-8b-it-res-jh"  # Adjust based on available SAEs
+SAE_RELEASE = "llama-3-8b-it-res-jh" 
+SAE_ID = "blocks.25.hook_resid_post"
 LAYER = 25
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -34,7 +35,7 @@ model = AutoModelForCausalLM.from_pretrained(
 print(f"Loading SAE for layer {LAYER}...")
 sae, cfg_dict, sparsity = SAE.from_pretrained(
     release=SAE_RELEASE,
-    sae_id=f"blocks.{LAYER}.hook_resid_post",
+    sae_id=SAE_ID,
     device=DEVICE
 )
 
