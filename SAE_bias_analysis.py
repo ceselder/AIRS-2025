@@ -122,7 +122,7 @@ last_token_acts_base = activations_base[:, -1, :]
 difference = (last_token_acts_counterfactual - last_token_acts_base).squeeze().detach().cpu().numpy()
 #difference = avg_counterfactual - avg_base
 
-top_k = 50
+top_k = 25
 top_indices = np.argsort(np.abs(difference))[-top_k:][::-1]
 top_differences = difference[top_indices]
 
