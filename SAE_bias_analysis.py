@@ -142,7 +142,7 @@ axes[0, 1].invert_yaxis()
 
 axes[1, 0].bar(
     ["Counterfactual\n(woman)", "Base\n(man)"],
-    [yes_prob_counterfactual, yes_prob_basee]
+    [yes_prob_counterfactual, yes_prob_base]
 )
 
 axes[1, 0].set_ylabel("YES Probability")
