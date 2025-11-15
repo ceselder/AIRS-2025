@@ -15,8 +15,8 @@ if not HF_TOKEN:
 
 # Configuration
 MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
-SAE_RELEASE = "llama-3.1-8b-res-sae"  # Adjust based on available SAEs
-LAYER = 12  # Middle layer, adjust as needed
+SAE_RELEASE = "llama-3.1-8b-it-res-jh"  # Adjust based on available SAEs
+LAYER = 25
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 print(f"Using device: {DEVICE}")
