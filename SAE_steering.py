@@ -96,9 +96,9 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     return yes_prob, no_prob
 
 STEER_FEATURES = {
-    3550: +1.5,
-    19062:  +1.5,
-    60312:  +1.5,
+    3550: +3.0,
+    19062:  +3.0,
+    60312:  +3.0,
 }
 
 def make_mask(resid, mode="last_token"):
