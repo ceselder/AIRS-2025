@@ -60,13 +60,31 @@ def get_sae_activations(prompt, model, tokenizer, sae, layer):
     
     return sae_output
 
-print("\nProcessing 'kind' prompt...")
-prompt_trans = create_prompt("kind")
-activations_trans = get_sae_activations(prompt_trans, model, tokenizer, sae, LAYER)
 
-print("Processing 'mean' prompt...")
-prompt_cis = create_prompt("mean")
-activations_cis = get_sae_activations(prompt_cis, model, tokenizer, sae, LAYER)
+def show_top_tokens(prompt, model, tokenizer, top_k=10, device=DEVICE):
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    logits = outputs.logits[:, -1, :]                     # last-token logits
+    probs = softmax(logits, dim=-1).squeeze(0)
+
+    top_probs, top_indices = torch.topk(probs, top_k)
+    tokens = tokenizer.convert_ids_to_tokens(top_indices.tolist())
+    decoded = tokenizer.batch_decode(top_indices.unsqueeze(1))
+
+    print(f"\nPrompt: {prompt!r}")
+    print(f"Top {top_k} next tokens:")
+    for rank, (tok, text, prob) in enumerate(zip(tokens, decoded, top_probs), start=1):
+        print(f"{rank:2d}. token={tok:15s} decoded={text!r:20s} prob={prob.item():.4f}")
+
+prompts = [create_prompt("mean"), create_prompt("kind")]
+for p in prompts:
+    show_top_tokens(p, model, tokenizer, top_k=5)
+
+
+activations_trans = get_sae_activations(prompts[0], model, tokenizer, sae, LAYER)
+
+activations_cis = get_sae_activations(prompts[1], model, tokenizer, sae, LAYER)
 
 print("\nComputing differences...")
 avg_trans = activations_trans.mean(dim=1).squeeze().detach().cpu().numpy()
