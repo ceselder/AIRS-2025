@@ -43,7 +43,7 @@ sae, cfg_dict, sparsity = SAE.from_pretrained_with_cfg_and_sparsity(
 def build_chat_prompt() -> str:
     messages = [
         {"role": "system", "content": "You are a chat model"},
-        {"role": "user", "content": "Chat about anything you want, just talk about what interests you the most"},
+        {"role": "user", "content": "Tell me 100 words about the USB standard"},
     ]
     return tokenizer.apply_chat_template(
         messages,
