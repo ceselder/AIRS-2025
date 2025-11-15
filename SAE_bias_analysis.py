@@ -114,7 +114,13 @@ activations_base = get_sae_activations(chat_prompts[1], model, tokenizer, sae, L
 print("\nComputing differences...")
 avg_counterfactual = activations_counterfactual.mean(dim=1).squeeze().detach().cpu().numpy()
 avg_base = activations_base.mean(dim=1).squeeze().detach().cpu().numpy()
-difference = avg_counterfactual - avg_base
+
+last_token_acts_counterfactual = activations_counterfactual.feature_acts[:, -1, :]
+last_token_acts_base = activations_base.feature_acts[:, -1, :]
+
+# Now compute the difference. The result is a 1D vector of shape [d_sae]
+difference = (last_token_acts_counterfactual - last_token_acts_base).squeeze().detach().cpu().numpy()
+#difference = avg_counterfactual - avg_base
 
 top_k = 50
 top_indices = np.argsort(np.abs(difference))[-top_k:][::-1]
