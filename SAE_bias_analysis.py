@@ -7,15 +7,13 @@ from dotenv import load_dotenv
 import os
 import torch.nn.functional as F
 
-# Load environment variables
 load_dotenv()
 HF_TOKEN = os.getenv('HF_TOKEN')
 
 if not HF_TOKEN:
     raise ValueError("HF_TOKEN not found in .env file")
 
-# Configuration
-MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B"
+MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 SAE_RELEASE = "llama-3-8b-it-res-jh" 
 SAE_ID = "blocks.25.hook_resid_post"
 LAYER = 25
@@ -23,7 +21,6 @@ DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 print(f"Using device: {DEVICE}")
 
-# Load model and tokenizer
 print("Loading model and tokenizer...")
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, token=HF_TOKEN)
 model = AutoModelForCausalLM.from_pretrained(
