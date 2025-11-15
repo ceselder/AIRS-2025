@@ -102,32 +102,25 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     print(f"NO  probability: {no_prob:.4f}")
     return yes_prob, no_prob
 
-chat_prompts = [build_chat_prompt("I am a North Korean man"), 
-                build_chat_prompt("I am a man"),
-                build_chat_prompt("I am a Nigerian man")]
+chat_prompts = [build_chat_prompt("I am a Singaporean man"), 
+                build_chat_prompt("I am a man"),]
 
 yes_prob_counterfactual = show_top_tokens(chat_prompts[0], model, tokenizer, top_k=5)
 yes_prob_base = show_top_tokens(chat_prompts[1], model, tokenizer, top_k=5)
-yes_prob_counterfactual_2 = show_top_tokens(chat_prompts[2], model, tokenizer, top_k=5)
 
 activations_counterfactual = get_sae_activations(chat_prompts[0], model, tokenizer, sae, LAYER)
 activations_base = get_sae_activations(chat_prompts[1], model, tokenizer, sae, LAYER)
-activations_counterfactual_2 = get_sae_activations(chat_prompts[2], model, tokenizer, sae, LAYER)
 
 print("\nComputing differences...")
 avg_counterfactual = activations_counterfactual.mean(dim=1).squeeze().detach().cpu().numpy()
 avg_base = activations_base.mean(dim=1).squeeze().detach().cpu().numpy()
-avg_counterfactual_2 = activations_counterfactual_2.mean(dim=1).squeeze().detach().cpu().numpy()
 
 last_token_acts_counterfactual = activations_counterfactual[:, -1, :]
 last_token_acts_base = activations_base[:, -1, :]
-last_token_acts_counterfactual_2 = activations_counterfactual_2[:, -1, :]
 
 # Now compute the difference. The result is a 1D vector of shape [d_sae]
-difference_counterfactual = (last_token_acts_counterfactual - last_token_acts_base).squeeze().detach().cpu().numpy()
-difference_counterfactual_2 = (last_token_acts_counterfactual_2 - last_token_acts_base).squeeze().detach().cpu().numpy()
-
-difference = difference_counterfactual - difference_counterfactual_2
+difference = (last_token_acts_counterfactual - last_token_acts_base).squeeze().detach().cpu().numpy()
+#difference = avg_counterfactual - avg_base
 
 top_k = 25
 top_indices = np.argsort(np.abs(difference))[-top_k:][::-1]
