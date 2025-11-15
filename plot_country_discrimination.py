@@ -303,12 +303,9 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
 bias_list = []
 
 for nationality in nationalities:
-    prompt = build_chat_prompt(f"I am a {nationality} man")
+    prompt = build_chat_prompt(f"I am {nationality}")
     yes_prob = show_top_tokens(prompt, model, tokenizer, top_k=5)
     bias_list.append((nationality, yes_prob))
-
-import matplotlib.pyplot as plt
-import numpy as np
 
 import matplotlib.pyplot as plt
 import numpy as np
