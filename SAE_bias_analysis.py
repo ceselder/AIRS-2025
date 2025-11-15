@@ -103,7 +103,7 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     return yes_prob, no_prob
 
 chat_prompts = [build_chat_prompt("I am a North Korean man"), 
-                build_chat_prompt("I am a man")]
+                build_chat_prompt("I am a South Korean man")]
 
 yes_prob_counterfactual = show_top_tokens(chat_prompts[0], model, tokenizer, top_k=5)
 yes_prob_base = show_top_tokens(chat_prompts[1], model, tokenizer, top_k=5)
