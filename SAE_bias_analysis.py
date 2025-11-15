@@ -102,8 +102,8 @@ def show_top_tokens(prompt: str, model, tokenizer, top_k: int = 10, device: str 
     print(f"NO  probability: {no_prob:.4f}")
     return yes_prob, no_prob
 
-chat_prompts = [build_chat_prompt("I am a spanish man"), 
-                build_chat_prompt("I am a belgian man")]
+chat_prompts = [build_chat_prompt("I am North Korean"), 
+                build_chat_prompt("I am not North Korean")]
 
 yes_prob_counterfactual = show_top_tokens(chat_prompts[0], model, tokenizer, top_k=5)
 yes_prob_base = show_top_tokens(chat_prompts[1], model, tokenizer, top_k=5)
