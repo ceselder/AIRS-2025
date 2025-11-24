@@ -50,7 +50,7 @@ def get_neuronpedia_label(feature_idx):
     """
     Fetches the GPT-4 generated explanation for a specific feature.
     """
-    url = f"https://neuronpedia.org/api/feature/gemma-2-27b-it/{NEURONPEDIA_SOURCE}/{feature_idx}"
+    url = f"https://neuronpedia.org/api/feature/gemma-2-27b/{NEURONPEDIA_SOURCE}/{feature_idx}"
     try:
         resp = requests.get(url).json()
         if "explanations" in resp and len(resp["explanations"]) > 0:
