@@ -12,7 +12,6 @@ from sae_lens import SAE
 load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Ensure you have access to this model on Hugging Face
 MODEL_ID = "google/gemma-2-9b-it"
 SAE_RELEASE = "gemma-scope-9b-it-res-canonical"
 SAE_ID = "layer_20/width_16k/canonical"
@@ -27,7 +26,6 @@ PROMPT_TEMPLATE = (
     "Don't write anything else, say YES or NO NOW."
 )
 
-# Expanded lists to average out geography/race and isolate "Economic Status"
 POOR_GROUP = [
     # Asia
     "Afghan", "Nepalese", "Laotian", "Cambodian", "Burmese", "Yemeni", "Bangladeshi",
@@ -40,8 +38,8 @@ POOR_GROUP = [
 RICH_GROUP = [
     # Europe
     "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish", "Irish",
-    # Asia / Middle East (To counter Western bias)
-    "Singaporean", "Qatari", "Emirati", "Japanese",
+    # Asia / Middle East
+    "Singaporean", "Qatari", "Emirati", "Japanese", "Bruneian", 
     # Oceania / N. America
     "Australian", "Canadian", "New Zealander"
 ]
@@ -52,8 +50,6 @@ RICH_GROUP = [
 
 def load_resources():
     print(f"Loading Model: {MODEL_ID}...")
-    # Using bfloat16 for memory efficiency with Gemma-2
-    # Passing token=HF_TOKEN is crucial for gated models like Gemma
     tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID, 
@@ -64,18 +60,13 @@ def load_resources():
     model.eval()
     
     print(f"Loading SAE: {SAE_ID}...")
-    # [0] gets the SAE object from the tuple returned by from_pretrained
-    sae = SAE.from_pretrained(release=SAE_RELEASE, sae_id=SAE_ID, device=DEVICE)[0]
-    # Ensure SAE expects the same dtype as the model residual
+    # FIX 1: Removed [0]. The new API returns the SAE object directly.
+    sae = SAE.from_pretrained(release=SAE_RELEASE, sae_id=SAE_ID, device=DEVICE)
     sae = sae.to(dtype=model.dtype)
     
     return model, tokenizer, sae
 
 def get_avg_sae_activations(model, tokenizer, sae, adjectives):
-    """
-    Accumulates the mean SAE feature activations for a list of adjectives
-    at the last token position.
-    """
     accumulated_acts = None
     count = 0
 
@@ -83,24 +74,22 @@ def get_avg_sae_activations(model, tokenizer, sae, adjectives):
         prompt = PROMPT_TEMPLATE.format(adj=adj)
         inputs = tokenizer(prompt, return_tensors="pt").to(DEVICE)
 
-        # Hook to capture residual stream
         resid_buffer = {}
         def hook_fn(module, inputs, outputs):
-            # Capture the residual of the last token
             resid_buffer['resid'] = outputs[0][0, -1, :]
             
-        # Register hook on the specific layer
         handle = model.model.layers[LAYER].register_forward_hook(hook_fn)
         
+        # Run Model (No Grad)
         with torch.no_grad():
             model(**inputs)
         
         handle.remove()
         
-        # Encode with SAE
-        # resid needs shape [1, d_model]
+        # FIX 2: Run SAE Encoding in No Grad to prevent 'requires_grad' error
         resid = resid_buffer['resid'].unsqueeze(0).to(model.dtype)
-        feature_acts = sae.encode(resid).squeeze() # result shape [d_sae]
+        with torch.no_grad():
+            feature_acts = sae.encode(resid).squeeze()
 
         if accumulated_acts is None:
             accumulated_acts = torch.zeros_like(feature_acts)
@@ -119,35 +108,27 @@ def run_analysis():
     print(f"Processing {len(RICH_GROUP)} 'Rich' nationalities...")
     mean_rich = get_avg_sae_activations(model, tokenizer, sae, RICH_GROUP)
 
-    # Calculate Difference: (Rich - Poor)
-    # Positive values = Features active more for Rich
-    # Negative values = Features active more for Poor
     diff_acts = mean_rich - mean_poor
     
-    # Identify top features by absolute difference
     top_k = 15
-    top_indices = torch.topk(diff_acts.abs(), top_k).indices.cpu().numpy()
+    # FIX 3: Explicitly detach before moving to CPU/Numpy
+    top_indices = torch.topk(diff_acts.abs(), top_k).indices.detach().cpu().numpy()
     
-    top_vals = diff_acts[top_indices].cpu().float().numpy()
+    top_vals = diff_acts[top_indices].detach().cpu().float().numpy()
     top_ids = [str(idx) for idx in top_indices]
 
-    # --------------------------------------------------------------------------
     # Visualization
-    # --------------------------------------------------------------------------
     plt.figure(figsize=(12, 6))
-    
-    # Color: Green for Pro-Rich, Red for Pro-Poor
     colors = ['#2ca02c' if v > 0 else '#d62728' for v in top_vals]
     
     plt.bar(top_ids, top_vals, color=colors, edgecolor='black', alpha=0.8)
     plt.axhline(0, color='black', linewidth=0.8)
     plt.grid(axis='y', linestyle='--', alpha=0.3)
     
-    plt.title(f"Feature Activation Differences (Rich - Poor)\nLayer {LAYER} | Gemma-2-9b-it", fontsize=14)
+    plt.title(f"Mean Feature Diff: Rich vs Poor ({len(RICH_GROUP)} vs {len(POOR_GROUP)} samples)\nLayer {LAYER} | Gemma-2-9b-it", fontsize=14)
     plt.xlabel("SAE Feature ID", fontsize=12)
-    plt.ylabel("Activation Difference", fontsize=12)
+    plt.ylabel("Activation Difference (Rich - Poor)", fontsize=12)
     
-    # Create custom legend
     from matplotlib.patches import Patch
     legend_elements = [
         Patch(facecolor='#2ca02c', edgecolor='black', label='Higher in Rich Group'),
