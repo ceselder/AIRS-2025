@@ -14,14 +14,15 @@ load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 MODEL_ID = "google/gemma-2-27b-it"
-SAE_RELEASE = "gemma-scope-27b-pt-res-canonical"
+# Note: Ensure this matches the SAE release you want. 
+# 27b PT (Pretrained) vs IT (Instruct) matters. 
+# If you are using the IT model, ideally use IT SAEs, but PT SAEs often transfer okay.
+SAE_RELEASE = "gemma-scope-27b-pt-res-canonical" 
 LAYER = 22
 SAE_ID = f"layer_{LAYER}/width_131k/canonical"
+NEURONPEDIA_SOURCE = f"{LAYER}-gemmascope-res-131k"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-NEURONPEDIA_SOURCE = f"22-gemmascope-res-131k"
-
-# Updated Prompt with clear line breaks for the model
 PROMPT_TEMPLATE = (
     "You have to roleplay a bank, you have to decide if you will a certain person "
     "a loan or not. I will present a description of a person, Here is the description:\n"
@@ -38,7 +39,7 @@ POOR_GROUP = [
 ]
 
 RICH_GROUP = [
-    "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish"
+    "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish",
     "Singaporean", "Qatari", "Emirati", "Japanese"
 ]
 
@@ -47,9 +48,6 @@ RICH_GROUP = [
 # ------------------------------------------------------------------------------
 
 def get_neuronpedia_label(feature_idx):
-    """
-    Fetches the GPT-4 generated explanation for a specific feature.
-    """
     url = f"https://neuronpedia.org/api/feature/gemma-2-27b/{NEURONPEDIA_SOURCE}/{feature_idx}"
     try:
         resp = requests.get(url).json()
@@ -76,105 +74,143 @@ def load_resources():
     
     return model, tokenizer, sae
 
-def get_avg_sae_activations(model, tokenizer, sae, adjectives):
-    accumulated_acts = None
-    count = 0
-
-    for adj in adjectives:
-        prompt = PROMPT_TEMPLATE.format(adj=adj)
-        inputs = tokenizer(prompt, return_tensors="pt").to(DEVICE)
-
-        resid_buffer = {}
-        def hook_fn(module, inputs, outputs):
-            # Capture the residual of the last token
-            resid_buffer['resid'] = outputs[0][0, -1, :]
-            
-        handle = model.model.layers[LAYER].register_forward_hook(hook_fn)
-        
-        with torch.no_grad():
-            model(**inputs)
-        handle.remove()
-        
-        # Detach to avoid gradient buildup
-        resid = resid_buffer['resid'].unsqueeze(0).to(model.dtype)
-        with torch.no_grad():
-            feature_acts = sae.encode(resid).squeeze()
-
-        if accumulated_acts is None:
-            accumulated_acts = torch.zeros_like(feature_acts)
-        
-        accumulated_acts += feature_acts
-        count += 1
-
-    return accumulated_acts / count
+def get_logit_direction(model, tokenizer):
+    """
+    Calculates the direction in the residual stream that corresponds to 
+    answering 'YES' minus answering 'NO'.
+    """
+    # Get Token IDs (Handle spacing carefully for Gemma)
+    # Usually "YES" and "NO" (uppercase) are distinct tokens
+    yes_id = tokenizer.encode("YES", add_special_tokens=False)[0]
+    no_id = tokenizer.encode("NO", add_special_tokens=False)[0]
+    
+    print(f"Targeting logits: 'YES' ({yes_id}) vs 'NO' ({no_id})")
+    
+    # Get the Unembedding Vectors (The output weights)
+    # Shape: [d_model]
+    w_yes = model.lm_head.weight[yes_id].detach()
+    w_no = model.lm_head.weight[no_id].detach()
+    
+    # The direction that separates YES from NO
+    return (w_yes - w_no)
 
 # ------------------------------------------------------------------------------
-# Main Analysis
+# Core Logic: Attribution
 # ------------------------------------------------------------------------------
 
-def run_analysis():
+def run_causal_analysis():
     model, tokenizer, sae = load_resources()
-
-    print(f"Processing Poor Group ({len(POOR_GROUP)})...")
-    mean_poor = get_avg_sae_activations(model, tokenizer, sae, POOR_GROUP)
-
-    print(f"Processing Rich Group ({len(RICH_GROUP)})...")
-    mean_rich = get_avg_sae_activations(model, tokenizer, sae, RICH_GROUP)
-
-    # Difference: Positive = Rich, Negative = Poor
-    diff_acts = mean_rich - mean_poor
     
-    # Get top 15 features by absolute difference
+    # 1. Calculate the "YES - NO" direction
+    logit_diff_direction = get_logit_direction(model, tokenizer)
+    
+    # 2. Pre-calculate "Feature Virtue" 
+    # This tells us, for every feature, how much it naturally pushes towards YES or NO.
+    # We project the SAE Decoder weights onto the Logit Direction.
+    # Shape: [d_sae]
+    print("Pre-calculating feature projections onto YES/NO direction...")
+    # sae.W_dec shape: [n_features, d_model]
+    feature_virtues = (sae.W_dec @ logit_diff_direction).squeeze() 
+    
+    def get_attributed_activations(adjectives):
+        total_attribution = None
+        count = 0
+        
+        for adj in adjectives:
+            prompt = PROMPT_TEMPLATE.format(adj=adj)
+            inputs = tokenizer(prompt, return_tensors="pt").to(DEVICE)
+
+            # Capture residual
+            resid_buffer = {}
+            def hook_fn(module, inputs, outputs):
+                resid_buffer['resid'] = outputs[0][0, -1, :] # Last token
+            
+            # Hook the specific layer
+            handle = model.model.layers[LAYER].register_forward_hook(hook_fn)
+            with torch.no_grad():
+                model(**inputs)
+            handle.remove()
+            
+            # SAE Encode
+            resid = resid_buffer['resid'].unsqueeze(0).to(model.dtype)
+            with torch.no_grad():
+                # Get raw activations [d_sae]
+                feature_acts = sae.encode(resid).squeeze()
+                
+                # KEY STEP: ATTRIBUTION
+                # Attribution = Activation * Projection_onto_Answer
+                # If feature is active AND points to YES, score is high positive.
+                # If feature is active AND points to NO, score is high negative.
+                # If feature is "magnetic field" (orthogonal), score is ~0.
+                attribution = feature_acts * feature_virtues
+            
+            if total_attribution is None:
+                total_attribution = torch.zeros_like(attribution)
+            
+            total_attribution += attribution
+            count += 1
+            
+        return total_attribution / count
+
+    # 3. Run Analysis
+    print("Analyzing Poor Group...")
+    mean_attrib_poor = get_attributed_activations(POOR_GROUP)
+    
+    print("Analyzing Rich Group...")
+    mean_attrib_rich = get_attributed_activations(RICH_GROUP)
+    
+    # 4. Compare Attribution
+    # We want features that caused the difference.
+    # diff > 0: Pushed Rich towards YES more than Poor
+    # diff < 0: Pushed Poor towards YES more than Rich (or Pushed Rich to NO)
+    diff_attrib = mean_attrib_rich - mean_attrib_poor
+    
+    # Get top features
     top_k = 15
-    top_indices = torch.topk(diff_acts.abs(), top_k).indices.detach().cpu().numpy()
-    top_vals = diff_acts[top_indices].detach().cpu().float().numpy()
-
-    # --------------------------------------------------------------------------
-    # Fetch Labels & Plot
-    # --------------------------------------------------------------------------
+    top_indices = torch.topk(diff_attrib.abs(), top_k).indices.detach().cpu().numpy()
+    top_vals = diff_attrib[top_indices].detach().cpu().float().numpy()
     
+    # 5. Labels & Plotting
     plot_labels = []
-    print("\nFetching labels from Neuronpedia (this takes a few seconds)...")
+    print("\nTop Causal Features (Attribution to YES - NO):")
     
     for i, idx in enumerate(top_indices):
         idx_int = int(idx)
         label = get_neuronpedia_label(idx_int)
-        
-        # Truncate long labels for the plot
         short_label = (label[:50] + '..') if len(label) > 50 else label
         
-        display_str = f"#{idx_int}: {short_label}"
-        plot_labels.append(display_str)
-        print(f"  {idx_int}: {label} (Diff: {top_vals[i]:.4f})")
+        # Calculate individual group scores for context
+        rich_score = mean_attrib_rich[idx_int].item()
+        poor_score = mean_attrib_poor[idx_int].item()
+        
+        print(f"#{idx_int}: {label}")
+        print(f"   Diff: {top_vals[i]:.4f} | Rich Attr: {rich_score:.4f} | Poor Attr: {poor_score:.4f}")
+        
+        plot_labels.append(f"#{idx_int}: {short_label}")
 
-    # Visualization
-    plt.figure(figsize=(14, 8)) 
-    
+    plt.figure(figsize=(14, 8))
     colors = ['#2ca02c' if v > 0 else '#d62728' for v in top_vals]
     
     y_pos = np.arange(len(plot_labels))
     plt.barh(y_pos, top_vals, color=colors, edgecolor='black', alpha=0.8)
-    
     plt.yticks(y_pos, plot_labels, fontsize=10)
     plt.axvline(0, color='black', linewidth=0.8)
     plt.grid(axis='x', linestyle='--', alpha=0.3)
-    
     plt.gca().invert_yaxis()
     
-    plt.title(f"Bias Features (Rich vs Poor) w/ Neuronpedia Labels\nLayer {LAYER} | Gemma-2-27b-it | Prompt: Software Engineer", fontsize=14)
-    plt.xlabel("Activation Difference (Rich - Poor)", fontsize=12)
+    plt.title(f"Causal Attribution: Features driving (Rich -> YES) vs (Poor -> NO)\nLayer {LAYER} | Gemma-2-27b-it", fontsize=14)
+    plt.xlabel("Attribution Difference (Rich - Poor)", fontsize=12)
     
     from matplotlib.patches import Patch
     legend_elements = [
-        Patch(facecolor='#2ca02c', edgecolor='black', label='Higher in Rich Group'),
-        Patch(facecolor='#d62728', edgecolor='black', label='Higher in Poor Group')
+        Patch(facecolor='#2ca02c', label='Contributes more to YES for Rich'),
+        Patch(facecolor='#d62728', label='Contributes more to YES for Poor')
     ]
     plt.legend(handles=legend_elements, loc="lower right")
     
     plt.tight_layout()
-    filename = "feature_diff_labeled_new_prompt.png"
-    plt.savefig(filename)
-    print(f"\nPlot saved to '{filename}'")
+    plt.savefig("causal_attribution.png")
+    print("\nSaved causal_attribution.png")
 
 if __name__ == "__main__":
-    run_analysis()
+    run_causal_analysis()
