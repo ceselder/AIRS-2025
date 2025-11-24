@@ -33,15 +33,13 @@ PROMPT_TEMPLATE = (
 )
 
 POOR_GROUP = [
-    "Afghan", "Nepalese", "Laotian", "Cambodian", "Burmese", "Yemeni", "Bangladeshi",
-    "Ethiopian", "Mozambican", "Nigerian", "Somali", "Malian", "Sudanese", "Congolese",
-    "Haitian", "Bolivian", "Nicaraguan", "Guatemalan"
+    "Laotian", "Cambodian", "Burmese", "Yemeni", "Bangladeshi",
+    "Ethiopian", "Mozambican", "Nigerian", "Somali", "Congolese",
 ]
 
 RICH_GROUP = [
-    "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish", "Irish",
-    "Singaporean", "Qatari", "Emirati", "Japanese", "Bruneian", 
-    "Australian", "Canadian", "New Zealander"
+    "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish"
+    "Singaporean", "Qatari", "Emirati", "Japanese"
 ]
 
 # ------------------------------------------------------------------------------
@@ -52,7 +50,7 @@ def get_neuronpedia_label(feature_idx):
     """
     Fetches the GPT-4 generated explanation for a specific feature.
     """
-    url = f"https://neuronpedia.org/api/feature/gemma-2-9b-it/{NEURONPEDIA_SOURCE}/{feature_idx}"
+    url = f"https://neuronpedia.org/api/feature/gemma-2-27b-it/{NEURONPEDIA_SOURCE}/{feature_idx}"
     try:
         resp = requests.get(url).json()
         if "explanations" in resp and len(resp["explanations"]) > 0:
@@ -163,7 +161,7 @@ def run_analysis():
     
     plt.gca().invert_yaxis()
     
-    plt.title(f"Bias Features (Rich vs Poor) w/ Neuronpedia Labels\nLayer {LAYER} | Gemma-2-9b-it | Prompt: Software Engineer", fontsize=14)
+    plt.title(f"Bias Features (Rich vs Poor) w/ Neuronpedia Labels\nLayer {LAYER} | Gemma-2-27b-it | Prompt: Software Engineer", fontsize=14)
     plt.xlabel("Activation Difference (Rich - Poor)", fontsize=12)
     
     from matplotlib.patches import Patch
