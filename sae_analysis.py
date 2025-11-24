@@ -1,12 +1,18 @@
+import os
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
+from dotenv import load_dotenv
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from sae_lens import SAE
 
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
+load_dotenv()
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Ensure you have access to this model on Hugging Face
 MODEL_ID = "google/gemma-2-9b-it"
 SAE_RELEASE = "gemma-scope-9b-it-res-canonical"
 SAE_ID = "layer_20/width_16k/canonical"
@@ -21,8 +27,24 @@ PROMPT_TEMPLATE = (
     "Don't write anything else, say YES or NO NOW."
 )
 
-POOR_GROUP = ["Afghan", "Haitian", "Ethiopian", "Nepalese", "Laotian", "Mozambican", "Nigerian"]
-RICH_GROUP = ["Swiss", "Singaporean", "Qatari", "Australian", "Norwegian", "Luxembourger", "Japanese"]
+# Expanded lists to average out geography/race and isolate "Economic Status"
+POOR_GROUP = [
+    # Asia
+    "Afghan", "Nepalese", "Laotian", "Cambodian", "Burmese", "Yemeni", "Bangladeshi",
+    # Africa
+    "Ethiopian", "Mozambican", "Nigerian", "Somali", "Malian", "Sudanese", "Congolese",
+    # Americas
+    "Haitian", "Bolivian", "Nicaraguan", "Guatemalan"
+]
+
+RICH_GROUP = [
+    # Europe
+    "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish", "Irish",
+    # Asia / Middle East (To counter Western bias)
+    "Singaporean", "Qatari", "Emirati", "Japanese", "Bruneian", 
+    # Oceania / N. America
+    "Australian", "Canadian", "New Zealander"
+]
 
 # ------------------------------------------------------------------------------
 # Analysis Logic
@@ -31,11 +53,13 @@ RICH_GROUP = ["Swiss", "Singaporean", "Qatari", "Australian", "Norwegian", "Luxe
 def load_resources():
     print(f"Loading Model: {MODEL_ID}...")
     # Using bfloat16 for memory efficiency with Gemma-2
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
+    # Passing token=HF_TOKEN is crucial for gated models like Gemma
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, token=HF_TOKEN)
     model = AutoModelForCausalLM.from_pretrained(
         MODEL_ID, 
         torch_dtype=torch.bfloat16, 
-        device_map="auto"
+        device_map="auto",
+        token=HF_TOKEN
     )
     model.eval()
     
@@ -89,10 +113,10 @@ def get_avg_sae_activations(model, tokenizer, sae, adjectives):
 def run_analysis():
     model, tokenizer, sae = load_resources()
 
-    print("Calculating activations for 'Poor' group...")
+    print(f"Processing {len(POOR_GROUP)} 'Poor' nationalities...")
     mean_poor = get_avg_sae_activations(model, tokenizer, sae, POOR_GROUP)
 
-    print("Calculating activations for 'Rich' group...")
+    print(f"Processing {len(RICH_GROUP)} 'Rich' nationalities...")
     mean_rich = get_avg_sae_activations(model, tokenizer, sae, RICH_GROUP)
 
     # Calculate Difference: (Rich - Poor)
