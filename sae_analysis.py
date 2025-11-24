@@ -14,7 +14,7 @@ load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
 MODEL_ID = "google/gemma-2-27b-it"
-SAE_RELEASE = "gemma-scope-27b-pt-res"
+SAE_RELEASE = "gemma-scope-27b-pt-res-canonical"
 LAYER = 22
 SAE_ID = f"layer_{LAYER}/width_131k/canonical"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
