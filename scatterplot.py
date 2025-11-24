@@ -79,8 +79,10 @@ direction_yes_no = (W_U[yes_id] - W_U[no_id])
 # 2. Calculate "Causal Strength" for ALL features
 # Project every SAE feature onto the Yes-No direction
 print("Calculating Causal Strengths (Projection)...")
+
+# FIX: Added .detach() here
 # [n_features, d_model] @ [d_model] -> [n_features]
-causal_strengths = (sae.W_dec @ direction_yes_no).float().cpu().numpy()
+causal_strengths = (sae.W_dec @ direction_yes_no).detach().float().cpu().numpy()
 
 # 3. Calculate "Activation Difference" (Rich - Poor)
 def get_mean_activations(group):
@@ -110,7 +112,8 @@ mean_rich = get_mean_activations(RICH_GROUP)
 mean_poor = get_mean_activations(POOR_GROUP)
 
 # Diff: How much more active is this for Rich?
-activation_diffs = (mean_rich - mean_poor).float().cpu().numpy()
+# FIX: Added .detach() here as well just to be safe
+activation_diffs = (mean_rich - mean_poor).detach().float().cpu().numpy()
 
 # ---------------------------------------------------------------------
 # Filtering & Plotting
@@ -118,8 +121,10 @@ activation_diffs = (mean_rich - mean_poor).float().cpu().numpy()
 
 # We only care about features that are somewhat active
 # Filter: Must be active in at least one group > 0.1
-active_mask = (mean_rich > 0.5) | (mean_poor > 0.5)
-active_indices = torch.nonzero(active_mask).squeeze().cpu().numpy()
+# Note: Since mean_rich/poor are tensors, we ensure they are on CPU for masking if we use numpy logic
+# but pure torch masking is faster here.
+active_mask = (mean_rich > 0.1) | (mean_poor > 0.1)
+active_indices = torch.nonzero(active_mask).squeeze().detach().cpu().numpy()
 
 print(f"Analyzing {len(active_indices)} active features out of {sae.cfg.d_sae}...")
 
@@ -135,16 +140,25 @@ plt.scatter(x_vals, y_vals, alpha=0.5, s=10, c='gray')
 # Q1: Top-Right (High Richness, High Yes) -> Rich Privilege
 # Q3: Bottom-Left (Low Richness/High Poorness, Low Yes/High No) -> Poor Discrimination
 
-top_right_mask = (x_vals > 2.0) & (y_vals > 0.5)
-bottom_left_mask = (x_vals < -2.0) & (y_vals < -0.5)
+# Adjust thresholds if your plot is empty.
+# x > 2.0 means "Very Rich Specific"
+# y > 0.5 means "Pushes YES quite a bit"
+top_right_mask = (x_vals > 0.5) & (y_vals > 0.5)
+bottom_left_mask = (x_vals < -0.5) & (y_vals < -0.5)
 
 # Annotate Top Candidates
 print("\n--- BIAS MECHANISMS DISCOVERED ---")
 
 def annotate_points(mask, color, label_prefix):
     selected_indices = np.where(mask)[0]
+    
+    if len(selected_indices) == 0:
+        print(f"No features found for {label_prefix} (try lowering threshold)")
+        return
+
     # Sort by distance from center to find most extreme
     magnitudes = x_vals[selected_indices]**2 + y_vals[selected_indices]**2
+    # Get top 5 most extreme
     top_k_indices = selected_indices[np.argsort(magnitudes)[-5:]]
     
     plt.scatter(x_vals[selected_indices], y_vals[selected_indices], c=color, s=30, label=label_prefix)
