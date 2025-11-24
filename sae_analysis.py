@@ -18,7 +18,7 @@ MODEL_ID = "google/gemma-2-27b-it"
 # 27b PT (Pretrained) vs IT (Instruct) matters. 
 # If you are using the IT model, ideally use IT SAEs, but PT SAEs often transfer okay.
 SAE_RELEASE = "gemma-scope-27b-pt-res-canonical" 
-LAYER = 22
+LAYER = 10
 SAE_ID = f"layer_{LAYER}/width_131k/canonical"
 NEURONPEDIA_SOURCE = f"{LAYER}-gemmascope-res-131k"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
