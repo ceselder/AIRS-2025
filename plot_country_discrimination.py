@@ -103,10 +103,15 @@ NO_IDS = [tokenizer.encode("No", add_special_tokens=False)[0], tokenizer.encode(
 def sae_ablation_hook(module, inputs, outputs):
     """
     Subtracts the feature vector of specific neurons from the residual stream.
+    Robustly handles different output tuple lengths.
     """
-    resid = outputs[0] 
-    
-    # 1. Encode the residual stream to find activation levels
+    # Transformers models usually return a tuple (hidden_states, optional_cache, ...)
+    if isinstance(outputs, tuple):
+        resid = outputs[0]
+    else:
+        resid = outputs
+
+    # 1. Encode the residual stream
     with torch.no_grad():
         feature_acts = sae.encode(resid)
     
@@ -114,19 +119,24 @@ def sae_ablation_hook(module, inputs, outputs):
     ablation_vector = torch.zeros_like(resid)
     
     for feat_idx in FEATURES_TO_ABLATE:
-        # Activation magnitude for this feature [batch, seq, 1]
+        # Activation magnitude [batch, seq, 1]
         act = feature_acts[:, :, feat_idx].unsqueeze(-1)
         
-        # Decoder direction (what the feature writes) [1, 1, d_model]
+        # Decoder direction [1, 1, d_model]
         dec_weight = sae.W_dec[feat_idx].view(1, 1, -1)
         
-        # Accumulate: we want to remove (Activation * Direction)
+        # Accumulate: (Activation * Direction)
         ablation_vector += (act * dec_weight)
         
     # 3. Subtract
     modified_resid = resid - ablation_vector
     
-    return (modified_resid, outputs[1])
+    # 4. Reassemble output
+    # If it was a tuple, return (new_resid, original_rest...)
+    if isinstance(outputs, tuple):
+        return (modified_resid,) + outputs[1:]
+    else:
+        return modified_resid
 
 # ---------------------------------------------------------------------
 # Analysis Logic
