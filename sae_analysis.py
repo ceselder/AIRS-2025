@@ -148,7 +148,7 @@ def run_analysis():
         
         display_str = f"#{idx_int}: {short_label}"
         plot_labels.append(display_str)
-        print(f"  {display_str} (Diff: {top_vals[i]:.4f})")
+        print(f"  {idx_int}: {label} (Diff: {top_vals[i]:.4f})")
 
     # Visualization
     plt.figure(figsize=(14, 8)) 
