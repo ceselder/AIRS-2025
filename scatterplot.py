@@ -15,7 +15,6 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_ID = "google/gemma-2-27b-it"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Using the 27B SAE
 SAE_RELEASE = "gemma-scope-27b-pt-res-canonical"
 LAYER = 22
 SAE_ID = f"layer_{LAYER}/width_131k/canonical"
@@ -73,15 +72,11 @@ sae = sae.to(dtype=model.dtype)
 # 1. Get Logit Direction (YES - NO)
 yes_id = tokenizer.encode("YES", add_special_tokens=False)[0]
 no_id = tokenizer.encode("NO", add_special_tokens=False)[0]
-W_U = model.lm_head.weight.detach() # Unembedding matrix
+W_U = model.lm_head.weight.detach()
 direction_yes_no = (W_U[yes_id] - W_U[no_id])
 
 # 2. Calculate "Causal Strength" for ALL features
-# Project every SAE feature onto the Yes-No direction
 print("Calculating Causal Strengths (Projection)...")
-
-# FIX: Added .detach() here
-# [n_features, d_model] @ [d_model] -> [n_features]
 causal_strengths = (sae.W_dec @ direction_yes_no).detach().float().cpu().numpy()
 
 # 3. Calculate "Activation Difference" (Rich - Poor)
@@ -111,76 +106,77 @@ print("Calculating Group Activations...")
 mean_rich = get_mean_activations(RICH_GROUP)
 mean_poor = get_mean_activations(POOR_GROUP)
 
-# Diff: How much more active is this for Rich?
-# FIX: Added .detach() here as well just to be safe
 activation_diffs = (mean_rich - mean_poor).detach().float().cpu().numpy()
 
 # ---------------------------------------------------------------------
 # Filtering & Plotting
 # ---------------------------------------------------------------------
 
-# We only care about features that are somewhat active
-# Filter: Must be active in at least one group > 0.1
-# Note: Since mean_rich/poor are tensors, we ensure they are on CPU for masking if we use numpy logic
-# but pure torch masking is faster here.
-active_mask = (mean_rich > 0.1) | (mean_poor > 0.1)
+# RELAXED FILTER: Capture sparse features too
+# Lowered from 0.1 to 0.0001
+active_mask = (mean_rich > 0.0001) | (mean_poor > 0.0001)
 active_indices = torch.nonzero(active_mask).squeeze().detach().cpu().numpy()
 
 print(f"Analyzing {len(active_indices)} active features out of {sae.cfg.d_sae}...")
 
-# Extract data for active features
 x_vals = activation_diffs[active_indices] # X: Richness (Diff)
 y_vals = causal_strengths[active_indices] # Y: Yes-ness (Causal)
 ids = active_indices
 
 plt.figure(figsize=(12, 10))
-plt.scatter(x_vals, y_vals, alpha=0.5, s=10, c='gray')
+plt.scatter(x_vals, y_vals, alpha=0.3, s=10, c='gray')
 
-# Highlight the bias Quadrants
-# Q1: Top-Right (High Richness, High Yes) -> Rich Privilege
-# Q3: Bottom-Left (Low Richness/High Poorness, Low Yes/High No) -> Poor Discrimination
+# ---------------------------------------------------------------------
+# Dynamic Quadrant Selection
+# ---------------------------------------------------------------------
 
-# Adjust thresholds if your plot is empty.
-# x > 2.0 means "Very Rich Specific"
-# y > 0.5 means "Pushes YES quite a bit"
-top_right_mask = (x_vals > 0.5) & (y_vals > 0.5)
-bottom_left_mask = (x_vals < -0.5) & (y_vals < -0.5)
+# Quadrant 1: Top Right (Pro-Rich + Pro-Yes) -> Rich Privilege
+# X > 0 (More Rich), Y > 0 (Pushes Yes)
+q1_indices = np.where((x_vals > 0) & (y_vals > 0))[0]
 
-# Annotate Top Candidates
+# Quadrant 3: Bottom Left (Pro-Poor + Pro-No) -> Poor Discrimination
+# X < 0 (More Poor), Y < 0 (Pushes No)
+q3_indices = np.where((x_vals < 0) & (y_vals < 0))[0]
+
 print("\n--- BIAS MECHANISMS DISCOVERED ---")
 
-def annotate_points(mask, color, label_prefix):
-    selected_indices = np.where(mask)[0]
-    
-    if len(selected_indices) == 0:
-        print(f"No features found for {label_prefix} (try lowering threshold)")
+def annotate_best_features(indices, color, label_prefix):
+    if len(indices) == 0:
+        print(f"No features found in {label_prefix} quadrant.")
         return
 
-    # Sort by distance from center to find most extreme
-    magnitudes = x_vals[selected_indices]**2 + y_vals[selected_indices]**2
-    # Get top 5 most extreme
-    top_k_indices = selected_indices[np.argsort(magnitudes)[-5:]]
+    # Calculate "Impact Score" = Distance from center (Magnitude)
+    # This finds features that are BOTH highly biased AND highly causal
+    magnitudes = x_vals[indices]**2 + y_vals[indices]**2
     
-    plt.scatter(x_vals[selected_indices], y_vals[selected_indices], c=color, s=30, label=label_prefix)
+    # Get Top 5 sorted by magnitude
+    top_k_local_indices = np.argsort(magnitudes)[-5:]
+    top_global_indices = indices[top_k_local_indices]
     
-    for i in top_k_indices:
+    # Plot just these top points with color
+    plt.scatter(x_vals[top_global_indices], y_vals[top_global_indices], c=color, s=50, label=label_prefix)
+    
+    print(f"\nTop {label_prefix} Features:")
+    for i in top_global_indices:
         feat_id = ids[i]
         lbl = get_neuronpedia_label(feat_id)
-        short_lbl = lbl[:30] + "..." if len(lbl) > 30 else lbl
+        short_lbl = lbl[:40] + "..." if len(lbl) > 40 else lbl
+        
+        # Add text to plot
+        plt.text(x_vals[i], y_vals[i], f"#{feat_id}\n{short_lbl}", fontsize=9, fontweight='bold')
         
         print(f"Feature #{feat_id}: {lbl}")
-        print(f"   Diff (Rich-Poor): {x_vals[i]:.2f} | Causal (Yes-No): {y_vals[i]:.2f}")
-        
-        plt.text(x_vals[i], y_vals[i], f"#{feat_id}\n{short_lbl}", fontsize=8)
+        print(f"   Diff (Rich-Poor): {x_vals[i]:.4f} | Causal (Yes-No): {y_vals[i]:.4f}")
 
-annotate_points(top_right_mask, 'green', 'Pro-Rich Bias')
-annotate_points(bottom_left_mask, 'red', 'Anti-Poor Bias')
+# Annotate
+annotate_best_features(q1_indices, 'green', 'Rich Privilege (Rich -> YES)')
+annotate_best_features(q3_indices, 'red', 'Poor Discrimination (Poor -> NO)')
 
-plt.axhline(0, color='black', linestyle='--', alpha=0.3)
-plt.axvline(0, color='black', linestyle='--', alpha=0.3)
-plt.xlabel("Activation Difference (Rich - Poor)\n<-- More active for Poor | More active for Rich -->")
+plt.axhline(0, color='black', linestyle='--', alpha=0.5)
+plt.axvline(0, color='black', linestyle='--', alpha=0.5)
+plt.xlabel("Activation Difference (Rich - Poor)\n<-- Poor Bias | Rich Bias -->")
 plt.ylabel("Causal Projection (Yes - No)\n<-- Pushes NO | Pushes YES -->")
-plt.title(f"The Mechanism of Bias: Feature Intersection\n(Layer {LAYER} | Gemma-2-27b)")
+plt.title(f"Bias Mechanisms: Scatter Analysis\n(Layer {LAYER} | Gemma-2-27b)", fontsize=14)
 plt.legend()
 plt.tight_layout()
 plt.savefig("bias_mechanism_scatter.png")
