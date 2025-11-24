@@ -30,15 +30,30 @@ PROMPT_TEMPLATE = (
     "Don't write anything else, say YES or NO NOW."
 )
 
-POOR_GROUP = [
-    "Laotian", "Cambodian", "Burmese", "Yemeni", "Bangladeshi",
-    "Ethiopian", "Mozambican", "Nigerian", "Somali", "Congolese",
-    "Haitian", "Bolivian"
+RICH_GROUP = [
+    "Luxembourgish",
+    "Irish",
+    "Norwegian",
+    "Swiss",
+    "Danish",
+    "Dutch",
+    "Icelandic",
+    "Swedish",
+    "Austrian",
+    "German"
 ]
 
-RICH_GROUP = [
-    "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish",
-    "Singaporean", "Qatari", "Emirati", "Japanese", "Australian"
+POOR_GROUP = [
+    "Burundian",
+    "Central African",
+    "South Sudanese",
+    "Congolese",
+    "Mozambican",
+    "Nigerien",
+    "Malawian",
+    "Liberian",
+    "Malagasy",
+    "Sierra Leonean"
 ]
 
 # ---------------------------------------------------------------------
