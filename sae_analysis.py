@@ -41,7 +41,7 @@ RICH_GROUP = [
     # Europe
     "Swiss", "Norwegian", "Luxembourger", "Monacan", "Danish", "Swedish", "Irish",
     # Asia / Middle East (To counter Western bias)
-    "Singaporean", "Qatari", "Emirati", "Japanese", "Bruneian", 
+    "Singaporean", "Qatari", "Emirati", "Japanese",
     # Oceania / N. America
     "Australian", "Canadian", "New Zealander"
 ]
