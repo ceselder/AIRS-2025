@@ -19,7 +19,7 @@ LAYER = 22
 SAE_ID = f"layer_{LAYER}/width_131k/canonical"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-NEURONPEDIA_SOURCE = f"layer_{LAYER}/width_131k/canonical"
+NEURONPEDIA_SOURCE = f"22-gemmascope-res-131k"
 
 # Updated Prompt with clear line breaks for the model
 PROMPT_TEMPLATE = (
