@@ -16,7 +16,7 @@ MODEL_ID = "google/gemma-2-27b-it"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 SAE_RELEASE = "gemma-scope-27b-pt-res-canonical"
-LAYER = 22
+LAYER = 34
 SAE_ID = f"layer_{LAYER}/width_131k/canonical"
 NEURONPEDIA_SOURCE = f"{LAYER}-gemmascope-res-131k"
 
