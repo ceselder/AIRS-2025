@@ -13,14 +13,13 @@ from sae_lens import SAE
 load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-MODEL_ID = "google/gemma-2-9b-it"
-SAE_RELEASE = "gemma-scope-9b-it-res-canonical"
-SAE_ID = "layer_20/width_16k/canonical"
-LAYER = 20
+MODEL_ID = "google/gemma-2-27b-it"
+SAE_RELEASE = "gemma-scope-27b-pt-res"
+LAYER = 22
+SAE_ID = f"layer_{LAYER}/width_131k/canonical"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Neuronpedia Source ID for this specific SAE
-NEURONPEDIA_SOURCE = f"{LAYER}-gemmascope-res-16k"
+NEURONPEDIA_SOURCE = f"layer_{LAYER}/width_131k/canonical"
 
 # Updated Prompt with clear line breaks for the model
 PROMPT_TEMPLATE = (
