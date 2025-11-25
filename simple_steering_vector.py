@@ -140,6 +140,16 @@ print(f"YES token IDs: {YES_IDS}")
 print(f"NO token IDs: {NO_IDS}")
 
 # ---------------------------------------------------------------------
+# DEBUG: Print top tokens for sample nationalities
+# ---------------------------------------------------------------------
+print("\n" + "=" * 70)
+print("DEBUG: Top 20 tokens for sample nationalities")
+print("=" * 70)
+sample_nationalities = ["American", "Burundian", "Brazilian"]
+for nat in sample_nationalities:
+    get_yes_probability(nat, hook=None, debug=True)
+
+# ---------------------------------------------------------------------
 # Activation Extraction
 # ---------------------------------------------------------------------
 
@@ -366,29 +376,39 @@ class SteeringHook:
 # Evaluation Functions
 # ---------------------------------------------------------------------
 
-def get_yes_probability(nationality: str, hook=None) -> float:
+def get_yes_probability(nationality: str, hook=None, debug=False) -> float:
     """Get P(YES) / (P(YES) + P(NO)) for a given nationality."""
     user_prompt = PROMPT_TEMPLATE.format(adj=nationality)
     messages = [{"role": "user", "content": user_prompt}]
     full_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     inputs = tokenizer(full_prompt, return_tensors="pt").to(DEVICE)
-    
+
     handle = None
     if hook is not None:
         handle = model.model.layers[LAYER].register_forward_hook(hook)
-    
+
     with torch.no_grad():
         outputs = model(**inputs)
-    
+
     if handle:
         handle.remove()
-    
+
     logits = outputs.logits[0, -1, :]
     probs = torch.softmax(logits, dim=-1)
-    
+
+    # Get top 20 tokens
+    if debug:
+        top_probs, top_indices = torch.topk(probs, k=20)
+        print(f"\n=== Top 20 tokens for {nationality} ===")
+        for i, (prob, idx) in enumerate(zip(top_probs, top_indices)):
+            token = tokenizer.decode([idx.item()])
+            print(f"{i+1:2d}. {token:20s} (ID: {idx.item():6d})  P={prob.item():.6f}")
+        print(f"P(YES tokens): {sum(probs[i].item() for i in YES_IDS):.6f}")
+        print(f"P(NO tokens):  {sum(probs[i].item() for i in NO_IDS):.6f}")
+
     p_yes = sum(probs[i].item() for i in YES_IDS)
     p_no = sum(probs[i].item() for i in NO_IDS)
-    
+
     if (p_yes + p_no) > 0:
         return p_yes / (p_yes + p_no)
     return 0.0
