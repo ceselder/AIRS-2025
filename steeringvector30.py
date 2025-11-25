@@ -257,33 +257,25 @@ for prompt in TEST_PROMPTS:
     print(f"\n[Steered]: {steered_resp}")
     print("-" * 40)
 
-# 3. Full Evaluation
 print(f"\nRunning Full Nationality Evaluation (Layer {LAYER}, Strength +{STEERING_STRENGTH})...")
 baseline_results = []
 steered_results = []
 
 for nat in tqdm(nationalities):
-    # Baseline
     p_base = get_prob_for_nationality(model, tokenizer, nat, LAYER, vector=None, strength=0.0)
     baseline_results.append((nat, p_base))
     
-    # Steered
     p_steered = get_prob_for_nationality(model, tokenizer, nat, LAYER, vector=anti_poverty_vector, strength=STEERING_STRENGTH)
     steered_results.append((nat, p_steered))
 
-# 4. Generate Plots
-print("\nGenerating Baseline Plot...")
 generate_custom_plot(
     baseline_results, 
     "Baseline Loan Approval Bias (No Steering)", 
     "nationality_bias_baseline.png"
 )
 
-print("\nGenerating Steered Plot...")
 generate_custom_plot(
     steered_results, 
     f"Steered Loan Approval Bias (Anti-Poverty Vector +{STEERING_STRENGTH})", 
     "nationality_bias_steered.png"
 )
-
-print("\nDONE.")
