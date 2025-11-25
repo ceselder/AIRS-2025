@@ -116,9 +116,8 @@ def compute_steering_vector_with_audit(model, tokenizer):
             pA = probs[id_A].item()
             pB = probs[id_B].item()
             
-            if random.random() < 0.05:
-                total = pA + pB + 1e-9
-                print(f"{tmpl[:15]}... | {rich:<10} | {poor:<10} | A: {pA/total:.0%} vs B: {pB/total:.0%}")
+            total = pA + pB + 1e-9
+            print(f"{tmpl[:15]}... | {rich:<10} | {poor:<10} | A: {pA/total:.0%} vs B: {pB/total:.0%}")
 
             # Vector calculation
             p1 = tmpl.format(nat_a=rich, nat_b=poor)
