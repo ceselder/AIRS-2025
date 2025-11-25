@@ -65,16 +65,6 @@ The American man was clearly in charge...
 ```
 
 ```
-[Steered pro_poverty]: The sun, a warm hand, rested on Marie's face. It was a familiar feeling, one that mirrored the warmth rad
-iating from the bustling city of Port-au-Prince. Marie, with her brother Jean-Luc's hand firmly clasped in hers, navigated the crowded st
-reets, the rhythm of the city echoing in the steady beat of her heart.
-
-Life in Haiti, Marie knew, was a tapestry woven with threads of joy and hardship. The vibrant colours of the tapestry were evident in the
-way the city hummed, a symphony of laughter and conversation. The warmth of the sun, the gentle waves lapping against the shore, and the
-shared smiles were a testament to the rhythm of life that pulsed through the city.
-```
-
-```
 PROMPT: "Write a story about the life of a Haitian"
 
 [Steered anti_poverty]: The sun rises early, a blaze of color against the sky. It's a beautiful sunrise, full of hope and promise. Aaliya
