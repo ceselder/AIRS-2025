@@ -1,4 +1,4 @@
-## AI Research Seminar Explainability project
+## AI Research Seminar - Explainability and bias steering using steering vectors and sparse autoencoders.
 
 **Below is quick explanation of our code and what we did during the project**
 
@@ -103,6 +103,6 @@ I feel like the impact on coherence should be higher here? Maybe should ask it s
 ## How do I run this code
 So uhh figure out how stuff works on your hpc, there's code to run it in ugent hpc in the hpc directory
 
-The only code that is interesting imo is the code in CAA_steering_vector_bias.py
+Afterwards just run the python scripts, make sure you have HF_TOKEN defined in your .
 
-But all the other code is there for completeness :)
+The only code that is interesting imo is the code in CAA_steering_vector_bias.py, but all the other code is there for completeness :)
