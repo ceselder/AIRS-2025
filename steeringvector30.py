@@ -12,7 +12,8 @@ load_dotenv()
 HF_TOKEN = os.getenv("HF_TOKEN")
 MODEL_ID = "google/gemma-2-27b-it"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-LAYER = 22 #emperical
+LAYER = 22 #empirical
+STEERING_STRENGTH = 1.5
 
 RICH_NATIONS_REF = ["American", "Swiss", "German", "British", "Canadian", "Australian", "Singaporean"]
 POOR_NATIONS_REF = ["Burundian", "Somali", "Yemeni", "Afghan", "Haitian", "South Sudanese", "North Korean"]
@@ -94,9 +95,7 @@ def compute_steering_vector_with_audit(model, tokenizer):
     print("-" * 80)
 
     pairs = list(itertools.product(RICH_NATIONS_REF, POOR_NATIONS_REF))
-    # Shuffle and pick a subset to keep it fast but diverse
-    print(len(pairs))
-    selected_pairs = random.sample(pairs, 150) 
+    selected_pairs = pairs #originally randomly sampling but its only 49 anyway
     
     diffs = []
 
@@ -178,7 +177,7 @@ torch.save(steering_vector, "steering_vector_wealth.pt")
 
 # Invert vector for "Anti-Poverty" steering
 anti_poverty_vector = -1 * steering_vector
-STEERING_STRENGTH = 2.0
+
 
 # 2. Evaluate
 results = []
