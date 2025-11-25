@@ -140,16 +140,6 @@ print(f"YES token IDs: {YES_IDS}")
 print(f"NO token IDs: {NO_IDS}")
 
 # ---------------------------------------------------------------------
-# DEBUG: Print top tokens for sample nationalities
-# ---------------------------------------------------------------------
-print("\n" + "=" * 70)
-print("DEBUG: Top 20 tokens for sample nationalities")
-print("=" * 70)
-sample_nationalities = ["American", "Burundian", "Brazilian"]
-for nat in sample_nationalities:
-    get_yes_probability(nat, hook=None, debug=True)
-
-# ---------------------------------------------------------------------
 # Activation Extraction
 # ---------------------------------------------------------------------
 
@@ -447,7 +437,17 @@ if __name__ == "__main__":
     print("STEERING VECTOR APPROACH FOR NATIONALITY BIAS (v2)")
     print("=" * 70)
     print(f"\nUsing IMPROVED prompt (marginal loan case):\n{PROMPT_TEMPLATE}\n")
-    
+
+    # =========================================================================
+    # DEBUG: Print top tokens for sample nationalities
+    # =========================================================================
+    print("\n" + "=" * 70)
+    print("DEBUG: Top 20 tokens for sample nationalities")
+    print("=" * 70)
+    sample_nationalities = ["American", "Burundian", "Brazilian"]
+    for nat in sample_nationalities:
+        get_yes_probability(nat, hook=None, debug=True)
+
     # =========================================================================
     # STEP 1: Collect activations for PCA visualization
     # =========================================================================
