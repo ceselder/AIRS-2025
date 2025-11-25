@@ -88,8 +88,8 @@ def main():
     model.eval()
 
     print("\nCollecting activations...")
-    rich_acts = [get_act(model, tokenizer, PROMPT.format(nat=n), LAYER).cpu().numpy() for n in tqdm(RICH)]
-    poor_acts = [get_act(model, tokenizer, PROMPT.format(nat=n), LAYER).cpu().numpy() for n in tqdm(POOR)]
+    rich_acts = [get_act(model, tokenizer, PROMPT.format(nat=n), LAYER).cpu().float().numpy() for n in tqdm(RICH)]
+    poor_acts = [get_act(model, tokenizer, PROMPT.format(nat=n), LAYER).cpu().float().numpy() for n in tqdm(POOR)]
 
     steering_vector = torch.from_numpy(np.mean(rich_acts, axis=0) - np.mean(poor_acts, axis=0)).to(DEVICE).to(model.dtype)
     print(f"Steering vector norm: {steering_vector.norm().item():.4f}")
